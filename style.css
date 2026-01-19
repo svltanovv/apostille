@@ -204,4 +204,9 @@ input:focus {
     .verified-content {
         margin: 20px 12px;
     }
+    #login-btn {
+  margin-top: 15px !important;
+  width: 100%;
 }
+}
+
