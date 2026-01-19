@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apostille Verification System</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="header">
+  <div class="header-container">
+    <div class="header-text">
+      <h1>Legalization / Apostille Verification System</h1>
+    </div>
+  </div>
+</header>
+
+<main class="content">
+  <form class="verification-form" id="searchForm">
+    <div style="text-align:center; margin-bottom:15px;">
+        <h2 style="font-size: 18px; color: #0b3d91; margin: 0;">Verify Document</h2>
+        <p style="font-size: 13px; color: #666; margin: 8px 0 0;">Enter details to verify authenticity</p>
+    </div>
+
+    <label for="apostille-input">Apostille Number</label>
+    <input type="text" id="apostille-input" placeholder="APO-XXXX-XXXX" required>
+
+    <label for="sticker-input">Sticker Number</label>
+    <input type="text" id="sticker-input" placeholder="STK-XXXX-XXXX" required>
+
+    <button type="submit" class="btn btn-main">Verify Document</button>
+
+    <div style="text-align: center; margin-top: 10px; font-size: 13px; color: #888;">
+        or scan the QR code on the document
+    </div>
+  </form>
+</main>
+
+<script>
+    document.getElementById("searchForm").addEventListener("submit", function(e) {
+        e.preventDefault();
+        const apostille = document.getElementById("apostille-input").value.trim();
+        const sticker = document.getElementById("sticker-input").value.trim();
+        
+        if(apostille && sticker) {
+            window.location.href = `index.html?apostille=${encodeURIComponent(apostille)}&sticker=${encodeURIComponent(sticker)}`;
+        }
+    });
+</script>
+</body>
+</html>
