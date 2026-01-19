@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apostille Admin Panel</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="header-container">
+      <div class="header-text">
+        <h1>Apostille Admin Panel</h1>
+      </div>
+    </div>
+  </header>
+
+  <main class="content" style="max-width: 800px">
+    <div id="login-block">
+      <h2 style="margin-bottom: 15px; color: #0b3d91">Admin Login</h2>
+      <label for="admin-email">Email</label>
+      <input type="email" id="admin-email" placeholder="admin@example.com" />
+      <label for="admin-password">Password</label>
+      <input type="password" id="admin-password" placeholder="Enter password" />
+      <button class="btn btn-main" id="login-btn">Login</button>
+    </div>
+
+    <div id="admin-block" style="display: none">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="color: #0b3d91; margin: 0">Upload Document</h2>
+        <button class="btn btn-secondary" id="logout-btn">Logout</button>
+      </div>
+
+      <div id="status-message" style="padding: 10px 12px; border-radius: 4px; margin-bottom: 12px; font-size: 13px; display: none;"></div>
+
+      <label for="apostille-number">Apostille Number</label>
+      <input type="text" id="apostille-number" placeholder="APO-2026-001" />
+
+      <label for="sticker-number">Sticker Number</label>
+      <input type="text" id="sticker-number" placeholder="STK-2026-001" />
+
+      <label for="pdf-file">PDF File</label>
+      <input type="file" id="pdf-file" accept="application/pdf" />
+
+      <button class="btn btn-main" id="upload-btn" style="margin-top: 10px; width: 100%">Upload PDF</button>
+
+      <h3 style="margin: 28px 0 12px; color: #0b3d91">Uploaded Documents</h3>
+
+      <input type="text" id="search-input" placeholder="Search by apostille number..." style="width: 100%; padding: 10px 12px; margin-bottom: 16px; border: 1px solid #ced4da; border-radius: 4px;" />
+
+      <div id="file-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px;"></div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const SUPABASE_URL = "https://frfbftfyoujcqbidaiji.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZyZmJmdGZ5b3VqY3FiaWRhaWppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ3NjA1NDksImV4cCI6MjA4MDMzNjU0OX0.uGAY7_ezLWDjcrxDAcPSraBcIqas6dEgOTTXAsRzdJg";
+
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const loginBlock = document.getElementById("login-block");
+    const adminBlock = document.getElementById("admin-block");
+    const fileList = document.getElementById("file-list");
+    const uploadBtn = document.getElementById("upload-btn");
+    const statusMessage = document.getElementById("status-message");
+    const searchInput = document.getElementById("search-input");
+
+    let allDocuments = [];
+
+    checkSession();
+
+    async function checkSession() {
+      const { data: { session } } = await db.auth.getSession();
+      if (session) {
+        loginBlock.style.display = "none";
+        adminBlock.style.display = "block";
+        loadFiles();
+      } else {
+        loginBlock.style.display = "block";
+        adminBlock.style.display = "none";
+      }
+    }
+
+    document.getElementById("login-btn").addEventListener("click", async () => {
+      const email = document.getElementById("admin-email").value.trim();
+      const password = document.getElementById("admin-password").value.trim();
+      if (!email || !password) {
+        showStatus("Please enter email and password", "error");
+        return;
+      }
+      const { data, error } = await db.auth.signInWithPassword({ email, password });
+      if (error) {
+        showStatus("Login error: " + error.message, "error");
+      } else {
+        checkSession();
+      }
+    });
+
+    document.getElementById("logout-btn").addEventListener("click", async () => {
+      await db.auth.signOut();
+      await checkSession();
+    });
+
+    document.getElementById("upload-btn").addEventListener("click", async () => {
+      const apostille = document.getElementById("apostille-number").value.trim();
+      const sticker = document.getElementById("sticker-number").value.trim();
+      const file = document.getElementById("pdf-file").files[0];
+
+      if (!apostille || !sticker || !file) {
+        showStatus("Please fill all fields and select a PDF", "error");
+        return;
+      }
+
+      uploadBtn.disabled = true;
+      uploadBtn.textContent = "Uploading...";
+
+      const filePath = `${Date.now()}_${file.name}`;
+
+      const { error: uploadError } = await db.storage.from("apostilles").upload(filePath, file);
+      if (uploadError) {
+        showStatus("Upload error: " + uploadError.message, "error");
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = "Upload PDF";
+        return;
+      }
+
+      const { error: dbError } = await db.from("apostilles").insert({
+        apostille_number: apostille,
+        sticker_number: sticker,
+        file_path: filePath,
+      });
+
+      if (dbError) {
+        showStatus("Database error: " + dbError.message, "error");
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = "Upload PDF";
+        return;
+      }
+
+      showStatus("Document uploaded successfully!", "success");
+      document.getElementById("apostille-number").value = "";
+      document.getElementById("sticker-number").value = "";
+      document.getElementById("pdf-file").value = "";
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = "Upload PDF";
+      loadFiles();
+    });
+
+    async function loadFiles() {
+      fileList.innerHTML = "<p style='grid-column: 1/-1; text-align: center; color: #999;'>Loading...</p>";
+
+      const { data, error } = await db.from("apostilles").select("*").order("created_at", { ascending: false });
+
+      if (error) {
+        fileList.innerHTML = "<p style='grid-column: 1/-1; text-align: center; color: #c62828;'>Error loading documents</p>";
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        fileList.innerHTML = "<p style='grid-column: 1/-1; text-align: center; color: #999;'>No documents uploaded yet</p>";
+        return;
+      }
+
+      allDocuments = data;
+      renderFiles(data);
+    }
+
+    function renderFiles(files) {
+      fileList.innerHTML = "";
+      if (files.length === 0) {
+        fileList.innerHTML = "<p style='grid-column: 1/-1; text-align: center; color: #999;'>No documents found</p>";
+        return;
+      }
+
+      files.forEach((row) => {
+        const card = document.createElement("div");
+        card.style.cssText = "background: #fff; padding: 14px; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 2px 4px rgba(0,0,0,0.08);";
+
+        const { data: publicData } = db.storage.from("apostilles").getPublicUrl(row.file_path);
+        const qrId = `qr-${row.id}`;
+        const qrText = `${window.location.origin}/?apostille=${encodeURIComponent(row.apostille_number)}&sticker=${encodeURIComponent(row.sticker_number)}`;
+
+        card.innerHTML = `
+          <strong>${row.apostille_number}</strong><br>
+          <span style="font-size: 12px; color: #666;">Sticker: ${row.sticker_number}</span><br>
+          <span style="font-size: 11px; color: #999;">${new Date(row.created_at).toLocaleDateString()}</span>
+          <div id="${qrId}" style="display: flex; justify-content: center; margin: 12px 0; padding: 10px; background: #f5f6fa; border-radius: 6px;"></div>
+          <div style="display: grid; gap: 8px;">
+            <a href="${publicData.publicUrl}" target="_blank" style="background: #0b3d91; color: white; padding: 6px 8px; border-radius: 4px; text-align: center; text-decoration: none; font-size: 12px;">📄 Open PDF</a>
+            <button onclick="downloadQR('${qrId}', '${row.apostille_number}')" style="background: #e9ecef; color: #212529; padding: 6px 8px; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; font-size: 12px;">⬇️ Download QR</button>
+            <button onclick="deleteDocument(${row.id}, '${row.file_path}')" style="background: #dc3545; color: white; padding: 6px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">🗑️ Delete</button>
+          </div>
+        `;
+
+        fileList.appendChild(card);
+
+        setTimeout(() => {
+          new QRCode(document.getElementById(qrId), {
+            text: qrText,
+            width: 140,
+            height: 140,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H,
+          });
+        }, 100);
+      });
+    }
+
+    searchInput.addEventListener("input", (e) => {
+      const query = e.target.value.toLowerCase();
+      const filtered = allDocuments.filter((doc) => doc.apostille_number.toLowerCase().includes(query));
+      renderFiles(filtered);
+    });
+
+    window.deleteDocument = async (docId, filePath) => {
+      if (!confirm("Delete this document?")) return;
+
+      const { error: storageError } = await db.storage.from("apostilles").remove([filePath]);
+      if (storageError) {
+        showStatus("Error deleting file", "error");
+        return;
+      }
+
+      const { error: dbError } = await db.from("apostilles").delete().eq("id", docId);
+      if (dbError) {
+        showStatus("Error deleting record", "error");
+        return;
+      }
+
+      showStatus("Document deleted", "success");
+      loadFiles();
+    };
+
+    window.downloadQR = (elementId, apostilleNumber) => {
+      const element = document.getElementById(elementId);
+      const canvas = element.querySelector("canvas");
+      if (!canvas) {
+        alert("QR code not ready yet");
+        return;
+      }
+      const link = document.createElement("a");
+      link.href = canvas.toDataURL();
+      link.download = `QR_${apostilleNumber}.png`;
+      link.click();
+    };
+
+    function showStatus(message, type) {
+      statusMessage.textContent = message;
+      statusMessage.style.display = "block";
+      statusMessage.style.backgroundColor = type === "success" ? "#d4edda" : "#f8d7da";
+      statusMessage.style.color = type === "success" ? "#155724" : "#721c24";
+      statusMessage.style.border = type === "success" ? "1px solid #c3e6cb" : "1px solid #f5c6cb";
+      setTimeout(() => {
+        statusMessage.style.display = "none";
+      }, 4000);
+    }
+  </script>
+</body>
+</html>
