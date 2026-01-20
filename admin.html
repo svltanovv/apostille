@@ -383,9 +383,7 @@
           .getPublicUrl(row.file_path);
         const url = publicData.publicUrl;
 
-        const qrText = `${window.location.origin}/?apostille=${encodeURIComponent(
-          row.apostille_number
-        )}&date=${encodeURIComponent(row.issue_date)}`;
+        const qrText = `${window.location.origin}/index.html?apostille=${encodeURIComponent(row.apostille_number)}&date=${encodeURIComponent(row.issue_date)}`;
 
         const qrId = `qr-${row.id}`;
 
@@ -488,6 +486,7 @@
   </script>
 </body>
 </html>
+
 
 
 
