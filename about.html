@@ -25,8 +25,8 @@
     <label for="apostille-input">Apostille Number</label>
     <input type="text" id="apostille-input" placeholder="APO-XXXX-XXXX" required>
 
-    <label for="sticker-input">Sticker Number</label>
-    <input type="text" id="sticker-input" placeholder="STK-XXXX-XXXX" required>
+    <label for="date-input">Date of Issue</label>
+    <input type="date" id="date-input" required>
 
     <button type="submit" class="btn btn-main">Verify Document</button>
 
@@ -40,10 +40,11 @@
     document.getElementById("searchForm").addEventListener("submit", function(e) {
         e.preventDefault();
         const apostille = document.getElementById("apostille-input").value.trim();
-        const sticker = document.getElementById("sticker-input").value.trim();
+        const date = document.getElementById("date-input").value;
         
-        if(apostille && sticker) {
-            window.location.href = `index.html?apostille=${encodeURIComponent(apostille)}&sticker=${encodeURIComponent(sticker)}`;
+        if(apostille && date) {
+            // ИСПРАВЛЕНО: Передаем параметр date вместо sticker
+            window.location.href = `index.html?apostille=${encodeURIComponent(apostille)}&date=${encodeURIComponent(date)}`;
         }
     });
 </script>
