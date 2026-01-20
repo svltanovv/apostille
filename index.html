@@ -35,10 +35,6 @@
                     <td id="apostille_field"></td>
                 </tr>
                 <tr>
-                    <th>Sticker Number</th>
-                    <td id="sticker_field"></td>
-                </tr>
-                <tr>
                     <th>Date of Issue</th>
                     <td id="date_field"></td>
                 </tr>
@@ -71,21 +67,23 @@
 <script type="module">
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const SUPABASE_URL = "https://frfbftfyoujcqbidaiji.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZyZmJmdGZ5b3VqY3FiaWRhaWppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ3NjA1NDksImV4cCI6MjA4MDMzNjU0OX0.uGAY7_ezLWDjcrxDAcPSraBcIqas6dEgOTTXAsRzdJg";
+// ВНИМАНИЕ: Используем те же ключи, что и в admin.html (tfdr...)
+const SUPABASE_URL = "https://tfdrjiztsbuusngfdmye.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmZHJqaXp0c2J1dXNuZ2ZkbXllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4MDMwMDMsImV4cCI6MjA4NDM3OTAwM30.jFFfWfU1vFrE_0XvnVm0wL1cW0O6QHtwAUbUv9mGMC4";
 
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const params = new URLSearchParams(window.location.search);
 const apostilleParam = params.get("apostille");
-const stickerParam = params.get("sticker");
+const dateParam = params.get("date"); // Ищем дату
 
 const loadingEl = document.getElementById("loading");
 const resultEl = document.getElementById("result-container");
 const errorEl = document.getElementById("error-container");
 const errorMsg = document.getElementById("error-message");
 
-if (!apostilleParam || !stickerParam) {
+if (!apostilleParam || !dateParam) {
+    // Если параметров нет, кидаем на поиск
     window.location.href = "about.html";
 } else {
     verifyDocument();
@@ -93,23 +91,32 @@ if (!apostilleParam || !stickerParam) {
 
 async function verifyDocument() {
     try {
+        console.log("Searching for:", apostilleParam, dateParam); // Для отладки
+        
         const { data, error } = await db
             .from("apostilles")
             .select("*")
             .eq("apostille_number", apostilleParam)
-            .eq("sticker_number", stickerParam)
+            .eq("issue_date", dateParam) // Ищем по issue_date
             .maybeSingle();
 
         loadingEl.style.display = "none";
 
-        if (error || !data) {
+        if (error) {
+            console.error("Supabase Error:", error);
+            errorEl.style.display = "block";
+            return;
+        }
+
+        if (!data) {
+            console.warn("Document not found");
             errorEl.style.display = "block";
             return;
         }
 
         document.getElementById("apostille_field").textContent = data.apostille_number;
-        document.getElementById("sticker_field").textContent = data.sticker_number;
-        document.getElementById("date_field").textContent = new Date(data.created_at).toLocaleDateString();
+        // Форматируем дату для отображения
+        document.getElementById("date_field").textContent = data.issue_date;
         
         if (data.file_path) {
             const { data: fileData } = db.storage.from("apostilles").getPublicUrl(data.file_path);
