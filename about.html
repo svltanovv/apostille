@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Apostille Verification System</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/html5-qrcode@2.3.10/html5-qrcode.min.js"></script>
 </head>
 <body>
 <header class="header">
@@ -28,21 +29,98 @@
     <label for="date-input">Date of Issue</label>
     <input type="date" id="date-input" required>
 
+    <label for="referral-input">Referral Code (Optional)</label>
+    <input type="text" id="referral-input" placeholder="Enter code if you have one">
+
     <button type="submit" class="btn btn-main">Verify Document</button>
+
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <button type="button" id="scan-qr-btn" class="btn btn-secondary" style="flex: 1;">
+            📷 Scan QR-code
+        </button>
+        <a href="samples.html" class="btn btn-secondary" style="flex: 1; text-align: center; text-decoration: none;">
+            View Samples
+        </a>
+    </div>
+
+    <a href="dashboard.html" class="btn btn-secondary" style="margin-top: 10px; text-align: center; width: 100%; text-decoration: none;">
+        Upload your Document (Login)
+    </a>
   </form>
 </main>
 
+<div id="qr-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center;">
+  <div style="background:#fff; padding:20px; border-radius:8px; max-width:400px; width:90%; position:relative;">
+    <button id="close-qr" style="position:absolute; right:10px; top:10px; border:none; background:none; font-size:20px; cursor:pointer;">&times;</button>
+    <h3>Scan QR Code</h3>
+    <div id="qr-reader" style="width:100%; margin-top:10px;"></div>
+    <p id="qr-status" style="font-size:12px; color:gray; margin-top:10px;"></p>
+  </div>
+</div>
+
 <script>
+    // Логика формы
     document.getElementById("searchForm").addEventListener("submit", function(e) {
         e.preventDefault();
         const apostille = document.getElementById("apostille-input").value.trim();
         const date = document.getElementById("date-input").value;
+        const referral = document.getElementById("referral-input").value.trim();
         
         if(apostille && date) {
-            // Перенаправляем на страницу результатов с параметрами
-            window.location.href = `index.html?apostille=${encodeURIComponent(apostille)}&date=${encodeURIComponent(date)}`;
+            let url = `index.html?apostille=${encodeURIComponent(apostille)}&date=${encodeURIComponent(date)}`;
+            if(referral) url += `&ref=${encodeURIComponent(referral)}`;
+            window.location.href = url;
         }
     });
+
+    // Логика QR Сканера (из кода друга)
+    const scanBtn = document.getElementById("scan-qr-btn");
+    const modal = document.getElementById("qr-modal");
+    const closeBtn = document.getElementById("close-qr");
+    let html5QrcodeScanner = null;
+
+    scanBtn.addEventListener("click", () => {
+        modal.style.display = "flex";
+        startScanner();
+    });
+
+    closeBtn.addEventListener("click", stopScanner);
+    
+    function startScanner() {
+        html5QrcodeScanner = new Html5Qrcode("qr-reader");
+        html5QrcodeScanner.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => {
+                // Успешное сканирование
+                stopScanner();
+                // Проверяем, ссылка это или текст
+                if (decodedText.includes("apostille=") && decodedText.includes("date=")) {
+                    // Если это ссылка нашего формата, переходим
+                    window.location.href = decodedText; 
+                } else {
+                    alert("QR Code format not recognized. It should contain apostille link.");
+                }
+            },
+            (errorMessage) => {
+                // Ошибки сканирования игнорируем, пока ищем код
+            }
+        ).catch(err => {
+            console.error(err);
+            document.getElementById("qr-status").innerText = "Camera error: " + err;
+        });
+    }
+
+    function stopScanner() {
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.stop().then(() => {
+                html5QrcodeScanner.clear();
+                modal.style.display = "none";
+            }).catch(err => console.error(err));
+        } else {
+            modal.style.display = "none";
+        }
+    }
 </script>
 </body>
 </html>
