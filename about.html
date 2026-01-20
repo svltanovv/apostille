@@ -29,10 +29,6 @@
     <input type="date" id="date-input" required>
 
     <button type="submit" class="btn btn-main">Verify Document</button>
-
-    <div style="text-align: center; margin-top: 10px; font-size: 13px; color: #888;">
-        or scan the QR code on the document
-    </div>
   </form>
 </main>
 
@@ -43,7 +39,7 @@
         const date = document.getElementById("date-input").value;
         
         if(apostille && date) {
-            // ИСПРАВЛЕНО: Передаем параметр date вместо sticker
+            // Перенаправляем на страницу результатов с параметрами
             window.location.href = `index.html?apostille=${encodeURIComponent(apostille)}&date=${encodeURIComponent(date)}`;
         }
     });
