@@ -95,10 +95,9 @@
         
         authStatus.textContent = "Sending login link...";
         // Используем OTP (код на почту) для входа без пароля, это проще всего настроить
-        const { error } = await db.auth.signInWithOtp({
+      const { error } = await db.auth.signInWithOtp({ 
     email: email,
     options: {
-        // Это скажет письму вернуть вас именно на эту страницу
         emailRedirectTo: window.location.href 
     }
 });
